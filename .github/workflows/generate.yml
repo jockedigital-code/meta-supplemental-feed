@@ -3,7 +3,8 @@ name: Generate Meta supplemental feed CSV
 on:
   workflow_dispatch:
   schedule:
-    - cron: "15 2 * * *"  # daily at 02:15 UTC
+    # Daily at 02:15 UTC (change if you want)
+    - cron: "15 2 * * *"
 
 permissions:
   contents: write
@@ -11,9 +12,12 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -26,17 +30,26 @@ jobs:
       - name: Generate CSV
         env:
           SHOP: ${{ secrets.SHOP }}
-          SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
-          SHOPIFY_API_VERSION: "2026-01"
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+
+          # Optional (leave as-is; if you didn't create these secrets it will use defaults in the script)
           AUTHOR_NAMESPACE: ${{ secrets.AUTHOR_NAMESPACE }}
           AUTHOR_KEY: ${{ secrets.AUTHOR_KEY }}
           META_LABEL_COL: ${{ secrets.META_LABEL_COL }}
+          SHOPIFY_API_VERSION: ${{ secrets.SHOPIFY_API_VERSION }}
         run: python generate_meta_supplemental_feed.py
 
-      - name: Commit CSV
+      - name: Commit CSV if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Add the generated file
           git add meta_supplemental_feed.csv
-          git commit -m "Update meta supplemental feed" || echo "No changes to commit"
+
+          # Commit only if there are changes
+          git diff --cached --quiet && echo "No changes to commit" || git commit -m "Update meta supplemental feed"
           git push
+
+
