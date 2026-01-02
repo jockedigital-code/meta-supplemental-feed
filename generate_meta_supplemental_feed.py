@@ -4,7 +4,13 @@ import sys
 import requests
 
 SHOP = os.environ["SHOP"]  # e.g. misquoters.myshopify.com
-TOKEN = os.environ["SHOPIFY_TOKEN"]  # shpat_...
+
+# Prefer a manually provided token if present, otherwise request one via client credentials
+TOKEN = os.environ.get("SHOPIFY_TOKEN", "").strip()
+
+CLIENT_ID = os.environ.get("CLIENT_ID", "").strip()
+CLIENT_SECRET = os.environ.get("CLIENT_SECRET", "").strip()
+
 API_VERSION = os.environ.get("SHOPIFY_API_VERSION", "2026-01")
 
 # Where your "author" lives (Shopify product metafield)
@@ -15,6 +21,31 @@ AUTHOR_KEY = os.environ.get("AUTHOR_KEY", "author")
 META_LABEL_COL = os.environ.get("META_LABEL_COL", "custom_label_0")
 
 OUT_CSV = os.environ.get("OUT_CSV", "meta_supplemental_feed.csv")
+
+def get_access_token():
+    """
+    Get a fresh Admin API access token using Shopify client credentials grant.
+    Requires CLIENT_ID + CLIENT_SECRET.
+    """
+    if not CLIENT_ID or not CLIENT_SECRET:
+        raise RuntimeError("Missing CLIENT_ID or CLIENT_SECRET (GitHub secrets).")
+
+    token_url = f"https://{SHOP}/admin/oauth/access_token"
+    payload = {
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+        "grant_type": "client_credentials",
+        "scope": "read_products",
+    }
+    r = requests.post(token_url, json=payload, timeout=60)
+    r.raise_for_status()
+    data = r.json()
+    if "access_token" not in data:
+        raise RuntimeError(f"Token response did not include access_token: {data}")
+    return data["access_token"]
+
+if not TOKEN:
+    TOKEN = get_access_token()
 
 GRAPHQL_URL = f"https://{SHOP}/admin/api/{API_VERSION}/graphql.json"
 HEADERS = {
@@ -70,7 +101,6 @@ def main():
             if p.get("metafield") and p["metafield"] and p["metafield"].get("value"):
                 author = str(p["metafield"]["value"]).strip()
 
-            # If no author, skip (or you can write blank rows—Meta usually prefers fewer rows)
             if not author:
                 continue
 
@@ -90,7 +120,6 @@ def main():
             break
         cursor = products["pageInfo"]["endCursor"]
 
-    # Write CSV
     fieldnames = ["id", META_LABEL_COL]
     with open(OUT_CSV, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=fieldnames)
