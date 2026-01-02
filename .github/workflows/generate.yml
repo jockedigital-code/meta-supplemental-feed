@@ -1,0 +1,42 @@
+name: Generate Meta supplemental feed CSV
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "15 2 * * *"  # daily at 02:15 UTC
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Generate CSV
+        env:
+          SHOP: ${{ secrets.SHOP }}
+          SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
+          SHOPIFY_API_VERSION: "2026-01"
+          AUTHOR_NAMESPACE: ${{ secrets.AUTHOR_NAMESPACE }}
+          AUTHOR_KEY: ${{ secrets.AUTHOR_KEY }}
+          META_LABEL_COL: ${{ secrets.META_LABEL_COL }}
+        run: python generate_meta_supplemental_feed.py
+
+      - name: Commit CSV
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add meta_supplemental_feed.csv
+          git commit -m "Update meta supplemental feed" || echo "No changes to commit"
+          git push
