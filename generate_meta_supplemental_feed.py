@@ -13,10 +13,9 @@ CLIENT_SECRET = os.environ.get("CLIENT_SECRET", "").strip()
 
 API_VERSION = os.environ.get("SHOPIFY_API_VERSION", "2026-01").strip()
 
-AUTHOR_NAMESPACE = os.environ.get("AUTHOR_NAMESPACE", "custom").strip()
-AUTHOR_KEY = os.environ.get("AUTHOR_KEY", "author").strip()
-
-META_LABEL_COL = os.environ.get("META_LABEL_COL", "custom_label_0").strip()
+AUTHOR_NAMESPACE = (os.environ.get("AUTHOR_NAMESPACE") or "custom").strip()
+AUTHOR_KEY = (os.environ.get("AUTHOR_KEY") or "author").strip()
+META_LABEL_COL = (os.environ.get("META_LABEL_COL") or "custom_label_0").strip()
 
 OUT_CSV = os.environ.get("OUT_CSV", "meta_supplemental_feed.csv").strip()
 
